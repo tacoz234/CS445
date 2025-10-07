@@ -1,0 +1,23 @@
+name: env445
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - jupyterlab=4.4.*
+  - nbgrader=0.9.*
+  - ipympl=0.9.* 
+  - matplotlib=3.10.* 
+  - pandas=2.3.* 
+  - seaborn=0.13.* 
+  - scikit-learn=1.7.* 
+  - graphviz=13.1.* 
+  - networkx=3.5.* 
+  - pip          
+  - pip: # these are installed using pip, not conda
+      # Uncomment --extra-index line for CUDA 12.6.
+      # See https://pytorch.org/get-started/locally/ for other configurations.
+      # - --extra-index-url=https://download.pytorch.org/whl/cu126
+      - torch==2.8.0
+      - torchvision==0.23.0
+      - torchaudio==2.8.0
+      - tensorboard~=2.20
