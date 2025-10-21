@@ -1,0 +1,19 @@
+digraph scalarflow {
+rankdir="LR"
+x [label="x "]
+y [label="y "]
+L0 [label="L0 "]
+L1 [label="L1 "]
+L2 [label="L2 "]
+L3 [label="L3 "]
+L4 [label="L4 "]
+L5 [label="L5 "]
+   x -> L0
+   x -> L1
+   y -> L2
+   L0 -> L5
+   L1 -> L3
+   L2 -> L3
+   L3 -> L4
+   L4 -> L5
+}
