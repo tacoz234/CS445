@@ -300,9 +300,33 @@ class Graph:
         Returns:  The numeric value of of the indicated node.
 
         """
+        if feed_dict is None:
+            feed_dict = {}
 
-    # UNFINISHED!!
-    pass
+        ordered = self._ancestor_list(node) + [node]
+
+        # Forward pass using topological order
+        for n in ordered:
+            n._forward(feed_dict)
+
+        result = node.value
+
+        if not compute_derivatives:
+            return result
+
+        # Zero gradients for involved nodes and seed output gradient with 1.0
+        for n in ordered:
+            n._derivative = 0.0
+        node._derivative = 1.0
+
+        # Backward pass (reverse topological order)
+        for n in reversed(ordered):
+            upstream = n._derivative
+            if upstream is None or upstream == 0.0:
+                continue
+            n._backward(upstream)
+
+        return result
 
 
 # Construct a default computation graph.
@@ -351,18 +375,30 @@ class Node:
 
         self.name = name
         _GRAPH._add_node(self)
+        # Internal state used by Graph.run and per-node ops.
+        self._value = None
+        self._derivative = None
 
     @property
     def value(self):
         """ Value should be read-only (except for variable nodes). """
-        # UNFINISHED!!
-        return None
+        return self._value
 
     @property
     def derivative(self):
         """ derivative should be read-only. """
-        # UNFINISHED!!
-        return None
+        return self._derivative
+
+    def _forward(self, feed_dict=None):
+        """Private: compute and cache this node's value."""
+        # Base nodes (Variable/Constant) keep their assigned _value.
+        # Placeholders and operators override this method.
+        return
+
+    def _backward(self, upstream):
+        """Private: propagate gradient to parents."""
+        # Base nodes do not have parents; operators override this method.
+        return
 
     def __repr__(self):
         """ Default string representation is the Node's name. """
@@ -418,13 +454,13 @@ class Variable(Node):
             name: Variable name
         """
         super().__init__(name)
+        self._value = value
 
     def assign(self, value):
         """ Assign a new value to this variable
 
         """
-        # UNFINISHED!
-        pass
+        self._value = value
 
 
 class Constant(Node):
@@ -449,6 +485,15 @@ class Placeholder(Node):
     def __init__(self, name=""):
         super().__init__(name)
 
+    def _forward(self, feed_dict=None):
+        if feed_dict is None or self.name not in feed_dict:
+            raise ValueError(f"Missing value for placeholder '{self.name}' in feed_dict.")
+        self._value = feed_dict[self.name]
+
+    def _backward(self, upstream):
+        # Leaf node; nothing to propagate.
+        return
+
 
 # BINARY OPERATORS ---------------------
 
@@ -459,6 +504,13 @@ class Add(BinaryOp):
     def __init__(self, operand1, operand2, name=""):
         super().__init__(operand1, operand2, name)
 
+    def _forward(self, feed_dict=None):
+        self._value = self.operand1.value + self.operand2.value
+
+    def _backward(self, upstream):
+        self.operand1._derivative += upstream
+        self.operand2._derivative += upstream
+
 
 class Subtract(BinaryOp):
     """ Subtraction.  Node representing operand1 - operand2. """
@@ -466,6 +518,13 @@ class Subtract(BinaryOp):
 
     def __init__(self, operand1, operand2, name=""):
         super().__init__(operand1, operand2, name)
+
+    def _forward(self, feed_dict=None):
+        self._value = self.operand1.value - self.operand2.value
+
+    def _backward(self, upstream):
+        self.operand1._derivative += upstream
+        self.operand2._derivative += -upstream
 
 
 class Multiply(BinaryOp):
@@ -475,6 +534,13 @@ class Multiply(BinaryOp):
     def __init__(self, operand1, operand2, name=""):
         super().__init__(operand1, operand2, name)
 
+    def _forward(self, feed_dict=None):
+        self._value = self.operand1.value * self.operand2.value
+
+    def _backward(self, upstream):
+        self.operand1._derivative += upstream * self.operand2.value
+        self.operand2._derivative += upstream * self.operand1.value
+
 
 class Divide(BinaryOp):
     """ Division.  Node representing operand1 / operand2.  """
@@ -482,6 +548,13 @@ class Divide(BinaryOp):
 
     def __init__(self, operand1, operand2, name=""):
         super().__init__(operand1, operand2, name)
+
+    def _forward(self, feed_dict=None):
+        self._value = self.operand1.value / self.operand2.value
+
+    def _backward(self, upstream):
+        self.operand1._derivative += upstream * (1.0 / self.operand2.value)
+        self.operand2._derivative += upstream * (-self.operand1.value / (self.operand2.value ** 2))
 
 
 # UNARY OPERATORS --------------------
@@ -498,8 +571,14 @@ class Pow(UnaryOp):
             power: The power to raise the operand to
             name:  Name for this node
         """
-
+        self.power = power
         super().__init__(operand, name)
+
+    def _forward(self, feed_dict=None):
+        self._value = self.operand.value ** self.power
+
+    def _backward(self, upstream):
+        self.operand._derivative += upstream * self.power * (self.operand.value ** (self.power - 1))
 
 
 class Exp(UnaryOp):
@@ -510,6 +589,12 @@ class Exp(UnaryOp):
     def __init__(self, operand, name=""):
         super().__init__(operand, name)
 
+    def _forward(self, feed_dict=None):
+        self._value = math.exp(self.operand.value)
+
+    def _backward(self, upstream):
+        self.operand._derivative += upstream * self.value
+
 
 class Log(UnaryOp):
     """ Log base e. """
@@ -518,6 +603,12 @@ class Log(UnaryOp):
     def __init__(self, operand, name=""):
         super().__init__(operand, name)
 
+    def _forward(self, feed_dict=None):
+        self._value = math.log(self.operand.value)
+
+    def _backward(self, upstream):
+        self.operand._derivative += upstream * (1.0 / self.operand.value)
+
 
 class Abs(UnaryOp):
     """ Absolute Value.  |operand| """
@@ -525,6 +616,17 @@ class Abs(UnaryOp):
 
     def __init__(self, operand, name=""):
         super().__init__(operand, name)
+
+    def _forward(self, feed_dict=None):
+        self._value = abs(self.operand.value)
+
+    def _backward(self, upstream):
+        sign = 0.0
+        if self.operand.value > 0:
+            sign = 1.0
+        elif self.operand.value < 0:
+            sign = -1.0
+        self.operand._derivative += upstream * sign
 
 
 def main():

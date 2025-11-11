@@ -2,3 +2,29 @@
 .ipynb_checkpoints/
 __pycache__/
 *.pyc
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Data and archives
+data/cifar-10-batches-py/
+data/cifar-10-python.tar.gz
+*.zip
+
+# Model artifacts and logs
+runs/
+*.tfevents.*
+*.pt
+
+# Torch RNN exercises (non-deliverable artifacts)
+torch_rnn_exercises/runs/
+torch_rnn_exercises.zip
+
+# Optional: ignore large arrays if not part of deliverable
+# *.npy
+
+# Optional: ignore project PDF unless required
+Poster_Project/Poster Project.pdf
