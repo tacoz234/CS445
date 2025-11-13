@@ -1,0 +1,25 @@
+name: env445
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.12
+  - python-graphviz=0.20.*   # brings in both wrapper + binaries
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1
+  - pip
+  - pip:
+      # keep your other Python packages here
+      # DO NOT list torch/torchvision/torchaudio under pip
+      - jupyterlab==4.4.*
+      - nbgrader==0.9.*
+      - ipympl==0.9.*
+      - matplotlib==3.10.*
+      - pandas==2.3.*
+      - seaborn==0.13.*
+      - scikit-learn==1.7.*
+      - networkx==3.5.*
+      - tensorboard~=2.20
