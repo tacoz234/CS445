@@ -37,7 +37,7 @@ class AbstractSFClassifier(abc.ABC):
                                           feed_dict=feed_dict))
         return np.array(results)
 
-    def train(self, x, y, learning_rate=.001, epochs=10):
+    def train(self, x, y, learning_rate=.001, epochs=10, verbose=True):
         """Train the classifier using SGD for the specified number of epochs.
 
         No mini-batches are used.  Weight updates are performed individually
@@ -53,6 +53,7 @@ class AbstractSFClassifier(abc.ABC):
 
         """
         feed_dicts = sf_util.xy_to_feed_dicts(x, y)
+        epoch_losses = []
         for epoch in range(epochs):
             random.shuffle(feed_dicts)
 
@@ -63,11 +64,15 @@ class AbstractSFClassifier(abc.ABC):
                 losses.append(loss)
 
                 for param in self.parameters:
-                    param.assign(param.value - learning_rate * param.derivative)
+                    param.assign(param.value - learning_rate *
+                                 param.derivative)
 
             total_loss = sum(losses)
+            epoch_losses.append(total_loss)
 
-            print("Epoch {} loss: {}".format(epoch, total_loss))
+            if verbose:
+                print("Epoch {} loss: {}".format(epoch, total_loss))
+        return epoch_losses
 
     def score(self, x, y):
         """ Return the accuracy of this model on the provided dataset and
@@ -180,17 +185,20 @@ class MLP(AbstractSFClassifier):
                 prev_size = len(prev_layer)
                 cur_layer = []
                 for j in range(hidden_size):
-                    cur_b = sf.Variable(1., name='b_{}_{}'.format(layer + 1, j))
+                    cur_b = sf.Variable(
+                        1., name='b_{}_{}'.format(layer + 1, j))
                     self.parameters.append(cur_b)
                     products = [cur_b]
                     for i in range(prev_size):
 
                         if activation == 'sigmoid':
-                            init_w = sf_util.glorot_init(prev_size, hidden_size)
+                            init_w = sf_util.glorot_init(
+                                prev_size, hidden_size)
+                        elif activation == 'relu':
+                            init_w = sf_util.he_init(prev_size)
                         else:
-                            # use sf_util.he_init
-                            raise ValueError("Unrecognized activation " +
-                                             activation)
+                            raise ValueError(
+                                "Unrecognized activation " + activation)
 
                         cur_w_name = 'w_{}_{}_{}'.format(layer + 1, i, j)
                         cur_w = sf.Variable(init_w, name=cur_w_name)
@@ -199,9 +207,11 @@ class MLP(AbstractSFClassifier):
                     total = sf_util.cum_sum(products)
                     if activation == 'sigmoid':
                         cur_layer.append(sf_util.logistic(total))
+                    elif activation == 'relu':
+                        cur_layer.append(sf.ReLU(total))
                     else:
-                        raise ValueError("Unrecognized activation " +
-                                         activation)
+                        raise ValueError(
+                            "Unrecognized activation " + activation)
 
                 prev_layer = cur_layer
 

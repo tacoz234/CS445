@@ -79,5 +79,5 @@ def mlp_xor(lr=.05, epochs=100, activation='sigmoid'):
 
 
 if __name__ == "__main__":
-    #mlp_xor()
+    # mlp_xor()
     logistic_regression_clusters()

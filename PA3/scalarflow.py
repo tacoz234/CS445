@@ -487,7 +487,8 @@ class Placeholder(Node):
 
     def _forward(self, feed_dict=None):
         if feed_dict is None or self.name not in feed_dict:
-            raise ValueError(f"Missing value for placeholder '{self.name}' in feed_dict.")
+            raise ValueError(
+                f"Missing value for placeholder '{self.name}' in feed_dict.")
         self._value = feed_dict[self.name]
 
     def _backward(self, upstream):
@@ -554,7 +555,8 @@ class Divide(BinaryOp):
 
     def _backward(self, upstream):
         self.operand1._derivative += upstream * (1.0 / self.operand2.value)
-        self.operand2._derivative += upstream * (-self.operand1.value / (self.operand2.value ** 2))
+        self.operand2._derivative += upstream * \
+            (-self.operand1.value / (self.operand2.value ** 2))
 
 
 # UNARY OPERATORS --------------------
@@ -578,7 +580,8 @@ class Pow(UnaryOp):
         self._value = self.operand.value ** self.power
 
     def _backward(self, upstream):
-        self.operand._derivative += upstream * self.power * (self.operand.value ** (self.power - 1))
+        self.operand._derivative += upstream * self.power * \
+            (self.operand.value ** (self.power - 1))
 
 
 class Exp(UnaryOp):
@@ -627,6 +630,21 @@ class Abs(UnaryOp):
         elif self.operand.value < 0:
             sign = -1.0
         self.operand._derivative += upstream * sign
+
+
+class ReLU(UnaryOp):
+    """ Rectified Linear Unit. max(0, operand) """
+    _COUNT = 0
+
+    def __init__(self, operand, name=""):
+        super().__init__(operand, name)
+
+    def _forward(self, feed_dict=None):
+        self._value = self.operand.value if self.operand.value > 0.0 else 0.0
+
+    def _backward(self, upstream):
+        grad = 1.0 if self.operand.value > 0.0 else 0.0
+        self.operand._derivative += upstream * grad
 
 
 def main():
